@@ -1,0 +1,19 @@
+# Compiled executable
+minifs
+
+# Object files
+*.o
+
+# Runtime virtual disk
+disk/*.disk
+disk/*.img
+
+# Keep disk folder
+!disk/.gitkeep
+
+# VS Code
+.vscode/
+
+# Temporary files
+*.tmp
+*.log
