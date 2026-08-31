@@ -80,6 +80,8 @@ public:
         bool append = false
     );
     bool readFile(const std::string& path) const;
+    std::string getFileContent(const std::string& path) const;
+    bool fileExists(const std::string& path) const;
     bool deleteFile(const std::string& path);
 
     bool makeDirectory(const std::string& path);

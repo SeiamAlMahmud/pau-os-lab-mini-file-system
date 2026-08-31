@@ -35,6 +35,10 @@ read <file>
     Read file content.
     Example: read notes.txt
 
+nani <file>
+    Open file in NANI terminal editor (nano clone).
+    Example: nani notes.txt
+
 delete <file>
 rm <file>
     Delete a file.
@@ -188,6 +192,80 @@ void Shell::run() {
                 std::cout << "Usage: read <file>\n";
             } else {
                 fs_.readFile(path);
+            }
+        }
+        else if (command == "nani") {
+            std::string path;
+            ss >> path;
+
+            if (path.empty()) {
+                std::cout << "Usage: nani <file>\n";
+                continue;
+            }
+
+            std::cout << "\033[2J\033[H";
+            std::cout << "==== NANI EDITOR: " << path << " ====\n";
+            std::cout << "Type your text below. You can use Enter for new lines.\n";
+            std::cout << "Press Ctrl+X (and then Enter) to quit and save.\n";
+            std::cout << "------------------------------------------------\n";
+            
+            std::string existingContent = fs_.getFileContent(path);
+            if (!existingContent.empty()) {
+                std::cout << existingContent;
+                if (existingContent.back() != '\n') {
+                    std::cout << "\n";
+                }
+            }
+            
+            std::string newContent = existingContent;
+            if (!newContent.empty() && newContent.back() != '\n') {
+                newContent += "\n";
+            }
+
+            std::string line;
+            bool askSave = false;
+            while (true) {
+                if (!std::getline(std::cin, line)) {
+                    break;
+                }
+                
+                // Check if the user pressed Ctrl+X (ASCII 24)
+                if (line.find('\x18') != std::string::npos) {
+                    askSave = true;
+                    // Remove Ctrl+X character from the line
+                    line.erase(std::remove(line.begin(), line.end(), '\x18'), line.end());
+                    if (!line.empty()) {
+                        newContent += line + "\n";
+                    }
+                    break;
+                }
+                
+                // Alternative way to exit if Ctrl+X doesn't work on their terminal
+                if (line == "^X") {
+                    askSave = true;
+                    break;
+                }
+
+                newContent += line + "\n";
+            }
+            
+            if (askSave) {
+                std::cout << "Save modified buffer? (y/n): ";
+                std::string ans;
+                std::getline(std::cin, ans);
+                if (ans == "y" || ans == "Y") {
+                    if (!fs_.fileExists(path)) {
+                        fs_.createFile(path);
+                    }
+                    if (!newContent.empty() && newContent.back() == '\n') {
+                        newContent.pop_back(); 
+                    }
+                    fs_.writeFile(path, newContent, false);
+                } else {
+                    std::cout << "Changes discarded.\n";
+                }
+            } else {
+                std::cout << "Exiting without saving.\n";
             }
         }
         else if (command == "delete" || command == "rm") {

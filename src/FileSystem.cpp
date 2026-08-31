@@ -503,6 +503,19 @@ bool FileSystem::readFile(const std::string& path) const {
     return true;
 }
 
+std::string FileSystem::getFileContent(const std::string& path) const {
+    std::lock_guard<std::mutex> lock(fsMutex_);
+    const int inodeNumber = resolvePathUnlocked(path, false);
+    return readFileUnlocked(inodeNumber);
+}
+
+bool FileSystem::fileExists(const std::string& path) const {
+    std::lock_guard<std::mutex> lock(fsMutex_);
+    const int inodeNumber = resolvePathUnlocked(path, false);
+    const Inode* inode = inodeManager_.get(inodeNumber);
+    return inode != nullptr && !inode->isDirectory;
+}
+
 bool FileSystem::removeFileUnlocked(int inodeNumber) {
     Inode* inode = inodeManager_.get(inodeNumber);
 
