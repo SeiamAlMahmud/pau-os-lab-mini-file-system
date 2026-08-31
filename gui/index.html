@@ -639,6 +639,7 @@
         let currentPath = "/";
         let editingFile = "";
         let selectedItemName = "";
+        let clipboard = null;
 
         window.onclick = function(event) {
             if (!event.target.closest('.btn-new') && !event.target.closest('.new-menu')) {
@@ -646,6 +647,84 @@
             }
             if (!event.target.closest('.more-actions') && !event.target.closest('.context-menu')) {
                 document.getElementById('globalContextMenu').classList.remove('active');
+            }
+        }
+
+        window.onkeydown = function(event) {
+            if (document.querySelector('.modal.active') || document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
+                return;
+            }
+
+            if (event.key === 'Delete' && selectedItemName) {
+                const itemPath = currentPath === '/' ? `/${selectedItemName}` : `${currentPath}/${selectedItemName}`;
+                deleteItem(itemPath);
+            }
+
+            if (event.ctrlKey || event.metaKey) {
+                if (event.key === 'c' || event.key === 'C') {
+                    if (selectedItemName) {
+                        const itemPath = currentPath === '/' ? `/${selectedItemName}` : `${currentPath}/${selectedItemName}`;
+                        clipboard = { action: 'copy', path: itemPath, name: selectedItemName };
+                        // Toast instead of alert for better UX
+                        showToast(`Copied '${selectedItemName}'`);
+                    }
+                } else if (event.key === 'x' || event.key === 'X') {
+                    if (selectedItemName) {
+                        const itemPath = currentPath === '/' ? `/${selectedItemName}` : `${currentPath}/${selectedItemName}`;
+                        clipboard = { action: 'cut', path: itemPath, name: selectedItemName };
+                        showToast(`Cut '${selectedItemName}'`);
+                    }
+                } else if (event.key === 'v' || event.key === 'V') {
+                    if (clipboard) {
+                        pasteClipboard();
+                    }
+                } else if (event.key === 'z' || event.key === 'Z') {
+                    showToast("Undo (Ctrl+Z) is not natively supported by MiniFS.");
+                }
+            }
+        }
+
+        function showToast(msg) {
+            let toast = document.getElementById('toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toast';
+                toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#323232;color:white;padding:12px 24px;border-radius:4px;z-index:9999;font-family:Roboto,sans-serif;box-shadow:0 3px 5px -1px rgba(0,0,0,.2);transition:opacity 0.3s;';
+                document.body.appendChild(toast);
+            }
+            toast.innerText = msg;
+            toast.style.opacity = '1';
+            setTimeout(() => { toast.style.opacity = '0'; }, 3000);
+        }
+
+        async function pasteClipboard() {
+            if (!clipboard) return;
+            const destPath = currentPath;
+            
+            if (clipboard.action === 'copy') {
+                const finalDest = currentPath === '/' ? `/${clipboard.name}` : `${currentPath}/${clipboard.name}`;
+                try {
+                    const response = await fetch(`/api/copy?source=${encodeURIComponent(clipboard.path)}&dest=${encodeURIComponent(finalDest)}`, { method: 'POST' });
+                    const result = await response.json();
+                    if (result.status === 'success') {
+                        loadDirectory(currentPath);
+                        showToast(`Pasted copied item`);
+                    } else {
+                        alert("Failed to paste (copy). Item might already exist.");
+                    }
+                } catch (err) { alert("Error pasting item."); }
+            } else if (clipboard.action === 'cut') {
+                try {
+                    const response = await fetch(`/api/move?source=${encodeURIComponent(clipboard.path)}&dest=${encodeURIComponent(destPath)}`, { method: 'POST' });
+                    const result = await response.json();
+                    if (result.status === 'success') {
+                        clipboard = null;
+                        loadDirectory(currentPath);
+                        showToast(`Pasted cut item`);
+                    } else {
+                        alert("Failed to paste (move). Item might already exist or invalid destination.");
+                    }
+                } catch (err) { alert("Error pasting item."); }
             }
         }
 
