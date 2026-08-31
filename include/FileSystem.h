@@ -89,6 +89,7 @@ public:
 
     bool changeDirectory(const std::string& path);
     void listDirectory(const std::string& path = "") const;
+    std::string listDirectoryJson(const std::string& path = "") const;
     void printWorkingDirectory() const;
 
     void statPath(const std::string& path) const;

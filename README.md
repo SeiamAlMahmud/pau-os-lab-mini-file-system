@@ -62,6 +62,7 @@ create <file>
 write <file> <text>
 append <file> <text>
 read <file>
+nani <file>
 delete <file>
 rm <file>
 

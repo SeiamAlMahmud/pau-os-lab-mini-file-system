@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MiniFS - My Drive</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --surface-color: #ffffff;
+            --text-primary: #202124;
+            --text-secondary: #5f6368;
+            --border-color: #dadce0;
+            --hover-color: #f1f3f4;
+            --accent-color: #1a73e8;
+            --accent-hover: #174ea6;
+            --danger-color: #d93025;
+            --folder-color: #5f6368;
+            --file-color: #1a73e8;
+            --shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', sans-serif;
+            background: var(--surface-color);
+            color: var(--text-primary);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        h1, h2, h3, .btn-new {
+            font-family: 'Google Sans', sans-serif;
+        }
+
+        /* Top Navbar */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 64px;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--surface-color);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            z-index: 100;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 22px;
+            color: var(--text-secondary);
+            width: 238px; /* Matches sidebar width */
+        }
+
+        .navbar-brand img {
+            width: 40px;
+            height: 40px;
+        }
+
+        .search-bar {
+            flex: 1;
+            max-width: 720px;
+            background: #f1f3f4;
+            border-radius: 8px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-secondary);
+            margin-left: 20px;
+        }
+
+        .search-bar input {
+            border: none;
+            background: transparent;
+            width: 100%;
+            font-size: 16px;
+            outline: none;
+        }
+
+        /* Layout */
+        .main-container {
+            display: flex;
+            width: 100%;
+            margin-top: 64px;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 256px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .btn-new {
+            background: var(--surface-color);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 0 24px 0 16px;
+            height: 48px;
+            border-radius: 24px;
+            font-size: 14px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            width: max-content;
+            box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+            transition: background 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-new:hover {
+            background: #f8f9fa;
+            box-shadow: 0 1px 3px 0 rgba(60,64,67,0.3), 0 4px 8px 3px rgba(60,64,67,0.15);
+        }
+
+        .btn-new img {
+            width: 28px;
+            height: 28px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 0 12px 0 24px;
+            height: 40px;
+            border-radius: 0 20px 20px 0;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: -16px; /* pull left to edge */
+        }
+
+        .nav-item.active {
+            background: #e8f0fe;
+            color: #1967d2;
+            font-weight: 500;
+        }
+
+        .nav-item.active i {
+            color: #1967d2;
+        }
+
+        .nav-item:not(.active):hover {
+            background: var(--hover-color);
+        }
+
+        /* Content Area */
+        .content {
+            flex: 1;
+            background: var(--surface-color);
+            border-radius: 16px 16px 0 0;
+            margin-top: 16px;
+            margin-right: 16px;
+            padding: 16px 24px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 18px;
+            color: var(--text-primary);
+            margin-bottom: 24px;
+            font-family: 'Google Sans', sans-serif;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+        }
+
+        .breadcrumb button {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 14px;
+            padding: 8px;
+            border-radius: 50%;
+        }
+
+        .breadcrumb button:hover {
+            background: var(--hover-color);
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+
+        .file-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 16px;
+        }
+
+        .file-card {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            cursor: pointer;
+            position: relative;
+            transition: background 0.2s;
+        }
+
+        .file-card:hover {
+            background: #f8f9fa;
+        }
+
+        .file-card i.icon {
+            font-size: 20px;
+            margin-right: 16px;
+        }
+
+        .file-card.dir i.icon {
+            color: var(--folder-color);
+        }
+
+        .file-card.file i.icon {
+            color: var(--file-color);
+        }
+
+        .file-info {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .file-name {
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-size {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .more-actions {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .file-card:hover .more-actions {
+            opacity: 1;
+        }
+
+        .more-actions:hover {
+            background: var(--hover-color);
+            color: var(--text-primary);
+        }
+
+        /* Context Menu (Delete etc) */
+        .context-menu {
+            position: absolute;
+            right: 0;
+            top: 40px;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            padding: 8px 0;
+            z-index: 10;
+            display: none;
+            width: 150px;
+        }
+
+        .context-menu.active {
+            display: block;
+        }
+
+        .context-item {
+            padding: 8px 16px;
+            font-size: 14px;
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .context-item:hover {
+            background: var(--hover-color);
+        }
+
+        .context-item.danger {
+            color: var(--danger-color);
+        }
+
+        /* Modals */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(32, 33, 36, 0.6);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--surface-color);
+            border-radius: 8px;
+            padding: 24px;
+            width: 400px;
+            box-shadow: 0 24px 38px 3px rgba(0,0,0,0.14);
+        }
+
+        .modal-content.large {
+            width: 800px;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 20px;
+            font-family: 'Google Sans', sans-serif;
+        }
+
+        .modal-body {
+            margin-bottom: 24px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .btn-text {
+            background: none;
+            border: none;
+            color: var(--accent-color);
+            font-weight: 500;
+            padding: 8px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Google Sans', sans-serif;
+        }
+
+        .btn-text:hover {
+            background: #f1f3f4;
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            font-weight: 500;
+            padding: 8px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Google Sans', sans-serif;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3);
+        }
+
+        input[type="text"] {
+            width: 100%;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 10px 12px;
+            font-size: 14px;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent-color);
+            border-width: 2px;
+            padding: 9px 11px;
+        }
+
+        textarea {
+            width: 100%;
+            flex: 1;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 14px;
+            resize: none;
+            outline: none;
+            box-sizing: border-box;
+        }
+        
+        textarea:focus {
+            border-color: var(--accent-color);
+        }
+
+        /* Dropdown New Menu */
+        .new-menu {
+            position: absolute;
+            top: 130px;
+            left: 16px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            padding: 8px 0;
+            display: none;
+            z-index: 200;
+            width: 256px;
+        }
+
+        .new-menu.active {
+            display: block;
+        }
+
+        .new-menu-item {
+            padding: 8px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            cursor: pointer;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .new-menu-item:hover {
+            background: #f1f3f4;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <!-- SVG Icon resembling Drive -->
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M14.5 10L6.5 24L10 30L18 16L14.5 10Z" fill="#FFC107"/>
+                <path d="M26.5 10L14.5 10L18 16L30 16L26.5 10Z" fill="#1976D2"/>
+                <path d="M30 16L22 30L25.5 36L33.5 22L30 16Z" fill="#4CAF50"/>
+            </svg>
+            <span>MiniFS</span>
+        </div>
+        <div class="search-bar">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Search in Drive (Visual Only)">
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <button class="btn-new" onclick="toggleNewMenu(event)">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-right: 4px;">
+                    <path d="M20 13H13V20H11V13H4V11H11V4H13V11H20V13Z" fill="#1A73E8"/>
+                </svg>
+                New
+            </button>
+
+            <!-- New Dropdown -->
+            <div class="new-menu" id="newMenu">
+                <div class="new-menu-item" onclick="openCreateModal('folder')">
+                    <i class="fas fa-folder-plus" style="color: var(--text-secondary);"></i>
+                    New folder
+                </div>
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 8px 0;">
+                <div class="new-menu-item" onclick="openCreateModal('file')">
+                    <i class="fas fa-file-alt" style="color: var(--text-secondary);"></i>
+                    New file
+                </div>
+            </div>
+
+            <div class="nav-item active" onclick="loadDirectory('/')">
+                <i class="fas fa-hdd"></i>
+                <span>My Drive</span>
+            </div>
+            <div class="nav-item">
+                <i class="fas fa-desktop"></i>
+                <span>Computers</span>
+            </div>
+            <div class="nav-item">
+                <i class="fas fa-user-friends"></i>
+                <span>Shared with me</span>
+            </div>
+            <div class="nav-item">
+                <i class="far fa-clock"></i>
+                <span>Recent</span>
+            </div>
+            <div class="nav-item">
+                <i class="far fa-star"></i>
+                <span>Starred</span>
+            </div>
+            <div class="nav-item">
+                <i class="far fa-trash-alt"></i>
+                <span>Trash</span>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="breadcrumb">
+                <span id="currentPathDisplay">My Drive</span>
+                <button onclick="goUp()" title="Go Up" style="margin-left: auto;">
+                    <i class="fas fa-arrow-up"></i>
+                </button>
+            </div>
+
+            <div class="section-title">Suggested</div>
+            <div class="file-grid" id="fileGrid" style="margin-bottom: 32px;">
+                <!-- Files will be loaded here -->
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- Create Modal -->
+    <div class="modal" id="createModal">
+        <div class="modal-content">
+            <div class="modal-title" id="createModalTitle">New folder</div>
+            <div class="modal-body">
+                <input type="text" id="newName" placeholder="Untitled folder">
+                <input type="hidden" id="createType">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-text" onclick="closeModal('createModal')">Cancel</button>
+                <button class="btn-primary" onclick="createItem()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit/View Modal -->
+    <div class="modal" id="editModal">
+        <div class="modal-content large">
+            <div class="modal-title" id="editModalTitle">Edit File</div>
+            <div class="modal-body">
+                <textarea id="fileEditor" spellcheck="false"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-text" onclick="closeModal('editModal')">Close</button>
+                <button class="btn-primary" onclick="saveFile()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPath = "/";
+        let editingFile = "";
+
+        // Click outside to close menus
+        window.onclick = function(event) {
+            if (!event.target.closest('.btn-new') && !event.target.closest('.new-menu')) {
+                document.getElementById('newMenu').classList.remove('active');
+            }
+            // Close context menus
+            if (!event.target.closest('.more-actions')) {
+                document.querySelectorAll('.context-menu').forEach(menu => {
+                    menu.classList.remove('active');
+                });
+            }
+        }
+
+        function toggleNewMenu(event) {
+            document.getElementById('newMenu').classList.toggle('active');
+        }
+
+        // Load directory contents
+        async function loadDirectory(path) {
+            try {
+                if (!path.startsWith('/')) path = '/' + path;
+                if (path !== '/' && path.endsWith('/')) path = path.slice(0, -1);
+                
+                const response = await fetch(`/api/ls?path=${encodeURIComponent(path)}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                currentPath = path;
+                
+                // Update breadcrumb
+                const displayPath = currentPath === '/' ? 'My Drive' : 'My Drive' + currentPath.replace(/\//g, ' > ');
+                document.getElementById('currentPathDisplay').innerText = displayPath;
+                
+                const grid = document.getElementById('fileGrid');
+                grid.innerHTML = '';
+
+                data.forEach(item => {
+                    if (item.name === '.' || item.name === '..') return;
+
+                    const isDir = item.type === 'DIR';
+                    const icon = isDir ? 'fa-folder' : 'fa-file-alt';
+                    const sizeText = isDir ? `${item.size} items` : `${item.size} bytes`;
+                    
+                    const card = document.createElement('div');
+                    card.className = `file-card ${isDir ? 'dir' : 'file'}`;
+                    
+                    card.innerHTML = `
+                        <i class="fas ${icon} icon"></i>
+                        <div class="file-info">
+                            <div class="file-name" title="${item.name}">${item.name}</div>
+                            <div class="file-size">${sizeText}</div>
+                        </div>
+                        <button class="more-actions" onclick="toggleContextMenu('${item.name}', event)">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <div class="context-menu" id="menu-${item.name}">
+                            <div class="context-item" onclick="deleteItem('${item.name}')">
+                                <i class="fas fa-trash-alt"></i> Remove
+                            </div>
+                        </div>
+                    `;
+
+                    // Double click to open folder, single click to select (simplified to single click for ease)
+                    card.onclick = (e) => {
+                        if (e.target.closest('.more-actions') || e.target.closest('.context-menu')) return;
+                        
+                        if (isDir) {
+                            loadDirectory(currentPath === '/' ? `/${item.name}` : `${currentPath}/${item.name}`);
+                        } else {
+                            openFile(item.name);
+                        }
+                    };
+
+                    grid.appendChild(card);
+                });
+
+                if (data.length <= 2) { 
+                    grid.innerHTML = '<div style="color: var(--text-secondary); text-align: center; width: 100%; padding: 40px;">No files or folders here</div>';
+                }
+
+            } catch (err) {
+                console.error("Error loading directory:", err);
+            }
+        }
+
+        function toggleContextMenu(name, event) {
+            event.stopPropagation();
+            // Close others
+            document.querySelectorAll('.context-menu').forEach(menu => {
+                if (menu.id !== `menu-${name}`) menu.classList.remove('active');
+            });
+            const menu = document.getElementById(`menu-${name}`);
+            menu.classList.toggle('active');
+        }
+
+        function goUp() {
+            if (currentPath === '/') return;
+            const parts = currentPath.split('/').filter(p => p);
+            parts.pop();
+            const newPath = '/' + parts.join('/');
+            loadDirectory(newPath);
+        }
+
+        async function openFile(filename) {
+            const filePath = currentPath === '/' ? `/${filename}` : `${currentPath}/${filename}`;
+            try {
+                const response = await fetch(`/api/read?path=${encodeURIComponent(filePath)}`);
+                const text = await response.text();
+                
+                editingFile = filePath;
+                document.getElementById('editModalTitle').innerText = filename;
+                document.getElementById('fileEditor').value = text;
+                document.getElementById('editModal').classList.add('active');
+            } catch (err) {
+                alert("Failed to read file.");
+            }
+        }
+
+        async function saveFile() {
+            const content = document.getElementById('fileEditor').value;
+            try {
+                const response = await fetch(`/api/write?path=${encodeURIComponent(editingFile)}`, {
+                    method: 'POST',
+                    body: content
+                });
+                const result = await response.json();
+                if (result.status === 'success') {
+                    closeModal('editModal');
+                    loadDirectory(currentPath);
+                } else {
+                    alert("Failed to save file.");
+                }
+            } catch (err) {
+                alert("Error saving file.");
+            }
+        }
+
+        function openCreateModal(type) {
+            document.getElementById('newMenu').classList.remove('active');
+            document.getElementById('createType').value = type;
+            document.getElementById('createModalTitle').innerText = type === 'folder' ? 'New folder' : 'New file';
+            document.getElementById('newName').placeholder = type === 'folder' ? 'Untitled folder' : 'Untitled file';
+            document.getElementById('newName').value = '';
+            document.getElementById('createModal').classList.add('active');
+            setTimeout(() => document.getElementById('newName').focus(), 100);
+        }
+
+        async function createItem() {
+            const name = document.getElementById('newName').value.trim();
+            if (!name) return;
+
+            const type = document.getElementById('createType').value;
+            const endpoint = type === 'folder' ? '/api/mkdir' : '/api/create';
+            const itemPath = currentPath === '/' ? `/${name}` : `${currentPath}/${name}`;
+
+            try {
+                const response = await fetch(`${endpoint}?path=${encodeURIComponent(itemPath)}`, { method: 'POST' });
+                const result = await response.json();
+                if (result.status === 'success') {
+                    closeModal('createModal');
+                    loadDirectory(currentPath);
+                } else {
+                    alert(`Failed to create ${type}.`);
+                }
+            } catch (err) {
+                alert("Error creating item.");
+            }
+        }
+
+        async function deleteItem(name) {
+            const itemPath = currentPath === '/' ? `/${name}` : `${currentPath}/${name}`;
+            try {
+                const response = await fetch(`/api/delete?path=${encodeURIComponent(itemPath)}`, { method: 'POST' });
+                const result = await response.json();
+                if (result.status === 'success') {
+                    loadDirectory(currentPath);
+                } else {
+                    alert("Failed to delete item. Make sure folders are empty.");
+                }
+            } catch (err) {
+                alert("Error deleting item.");
+            }
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        // Initial load
+        loadDirectory('/');
+    </script>
+</body>
+</html>

@@ -688,6 +688,40 @@ void FileSystem::listDirectory(const std::string& path) const {
     }
 }
 
+std::string FileSystem::listDirectoryJson(const std::string& path) const {
+    std::lock_guard<std::mutex> lock(fsMutex_);
+
+    const int inodeNumber =
+        path.empty()
+            ? currentDirectory_
+            : resolvePathUnlocked(path, true);
+
+    if (inodeNumber < 0) {
+        return "{\"error\": \"Directory not found.\"}";
+    }
+
+    const auto children = directory_.children(inodeNumber);
+
+    std::string json = "[";
+    bool first = true;
+    for (const int childId : children) {
+        const Inode* child = inodeManager_.get(childId);
+        if (!child) continue;
+
+        if (!first) json += ",";
+        first = false;
+
+        json += "{";
+        json += "\"name\": \"" + child->name + "\",";
+        json += "\"type\": \"" + std::string(child->isDirectory ? "DIR" : "FILE") + "\",";
+        json += "\"size\": " + std::to_string(child->isDirectory ? directory_.childCount(childId) : static_cast<std::size_t>(child->size));
+        json += "}";
+    }
+    json += "]";
+
+    return json;
+}
+
 std::string FileSystem::pathOfUnlocked(int inodeNumber) const {
     if (inodeNumber == superBlock_.rootInode) {
         return "/";
