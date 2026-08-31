@@ -93,8 +93,11 @@ public:
     void printWorkingDirectory() const;
 
     void statPath(const std::string& path) const;
+    std::string statPathJson(const std::string& path) const;
     void diskInfo() const;
+    std::string diskInfoJson() const;
     void tree(const std::string& path = "") const;
+    std::string treeJson(const std::string& path = "") const;
 
     bool renamePath(
         const std::string& oldPath,

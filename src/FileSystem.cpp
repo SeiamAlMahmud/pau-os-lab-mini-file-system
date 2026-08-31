@@ -832,6 +832,38 @@ void FileSystem::statPath(const std::string& path) const {
     std::cout << "=================================\n\n";
 }
 
+std::string FileSystem::statPathJson(const std::string& path) const {
+    std::lock_guard<std::mutex> lock(fsMutex_);
+
+    const int inodeNumber = resolvePathUnlocked(path, false);
+    const Inode* inode = inodeManager_.get(inodeNumber);
+
+    if (!inode) {
+        return "{\"error\": \"Path not found.\"}";
+    }
+
+    std::string json = "{";
+    json += "\"path\": \"" + pathOfUnlocked(inodeNumber) + "\",";
+    json += "\"name\": \"" + std::string(inodeNumber == superBlock_.rootInode ? "/" : inode->name) + "\",";
+    json += "\"type\": \"" + std::string(inode->isDirectory ? "Directory" : "Regular File") + "\",";
+    json += "\"inode_number\": " + std::to_string(inode->id) + ",";
+    json += "\"parent_inode\": " + std::to_string(inode->parent) + ",";
+    json += "\"created\": \"" + timeToString(inode->createdAt) + "\",";
+    json += "\"modified\": \"" + timeToString(inode->modifiedAt) + "\",";
+    
+    if (inode->isDirectory) {
+        json += "\"child_count\": " + std::to_string(directory_.childCount(inodeNumber)) + ",";
+        json += "\"size\": \"Directory metadata\",";
+        json += "\"data_blocks\": 0";
+    } else {
+        json += "\"size\": \"" + std::to_string(inode->size) + " bytes\",";
+        json += "\"data_blocks\": " + std::to_string(inode->blockCount);
+    }
+    json += "}";
+    
+    return json;
+}
+
 void FileSystem::diskInfo() const {
     std::lock_guard<std::mutex> lock(fsMutex_);
 
@@ -873,6 +905,28 @@ void FileSystem::diskInfo() const {
               << pathOfUnlocked(currentDirectory_)
               << "\n";
     std::cout << "===============================\n\n";
+}
+
+std::string FileSystem::diskInfoJson() const {
+    std::lock_guard<std::mutex> lock(fsMutex_);
+
+    const std::size_t usedBlocks = MiniFSConfig::TOTAL_BLOCKS - superBlock_.freeBlocks;
+    const std::size_t usedInodes = MiniFSConfig::MAX_INODES - superBlock_.freeInodes;
+
+    std::string json = "{";
+    json += "\"disk_size_mb\": " + std::to_string(MiniFSConfig::DISK_SIZE / (1024 * 1024)) + ",";
+    json += "\"block_size\": " + std::to_string(MiniFSConfig::BLOCK_SIZE) + ",";
+    json += "\"total_blocks\": " + std::to_string(MiniFSConfig::TOTAL_BLOCKS) + ",";
+    json += "\"metadata_blocks\": " + std::to_string(MiniFSConfig::DATA_START_BLOCK) + ",";
+    json += "\"used_blocks\": " + std::to_string(usedBlocks) + ",";
+    json += "\"free_blocks\": " + std::to_string(superBlock_.freeBlocks) + ",";
+    json += "\"total_inodes\": " + std::to_string(MiniFSConfig::MAX_INODES) + ",";
+    json += "\"used_inodes\": " + std::to_string(usedInodes) + ",";
+    json += "\"free_inodes\": " + std::to_string(superBlock_.freeInodes) + ",";
+    json += "\"current_path\": \"" + pathOfUnlocked(currentDirectory_) + "\"";
+    json += "}";
+    
+    return json;
 }
 
 void FileSystem::printTreeUnlocked(
@@ -949,6 +1003,58 @@ void FileSystem::tree(const std::string& path) const {
     }
 
     printTreeUnlocked(inodeNumber, "", true);
+}
+
+std::string FileSystem::treeJson(const std::string& path) const {
+    std::lock_guard<std::mutex> lock(fsMutex_);
+
+    const int inodeNumber = path.empty() ? currentDirectory_ : resolvePathUnlocked(path, false);
+    if (inodeNumber < 0) { return "{\"error\": \"Path not found.\"}"; }
+
+    std::string treeStr;
+    
+    auto buildTree = [&](auto& self, int currInode, const std::string& prefix, bool isLast) -> void {
+        const Inode* inode = inodeManager_.get(currInode);
+        if (!inode) return;
+
+        if (currInode == superBlock_.rootInode) {
+            treeStr += "/\n";
+        } else {
+            treeStr += prefix + (isLast ? "\u2514\u2500\u2500 " : "\u251c\u2500\u2500 ") + inode->name + (inode->isDirectory ? "/" : "") + "\n";
+        }
+
+        if (!inode->isDirectory) return;
+
+        auto children = directory_.children(currInode);
+        std::sort(children.begin(), children.end(), [this](int a, int b) {
+            const Inode* left = inodeManager_.get(a);
+            const Inode* right = inodeManager_.get(b);
+            if (!left || !right) return a < b;
+            if (left->isDirectory != right->isDirectory) return left->isDirectory > right->isDirectory;
+            return std::string(left->name) < std::string(right->name);
+        });
+
+        std::string nextPrefix = prefix;
+        if (currInode != superBlock_.rootInode) {
+            nextPrefix += isLast ? "    " : "\u2502   ";
+        }
+
+        for (std::size_t i = 0; i < children.size(); ++i) {
+            self(self, children[i], nextPrefix, i + 1 == children.size());
+        }
+    };
+
+    buildTree(buildTree, inodeNumber, "", true);
+
+    std::string escaped;
+    for (char c : treeStr) {
+        if (c == '\n') escaped += "\\n";
+        else if (c == '"') escaped += "\\\"";
+        else if (c == '\\') escaped += "\\\\";
+        else escaped += c;
+    }
+
+    return "{\"tree\": \"" + escaped + "\"}";
 }
 
 bool FileSystem::renamePath(

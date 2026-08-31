@@ -66,8 +66,59 @@ void WebServer::setupRoutes() {
 
     svr_->Post("/api/delete", [this](const httplib::Request& req, httplib::Response& res) {
         std::string path = req.has_param("path") ? req.get_param_value("path") : "";
-        // We'll try deleteFile first, if it fails, try removeDirectory
         if (fs_.deleteFile(path) || fs_.removeDirectory(path)) {
+            res.set_content("{\"status\": \"success\"}", "application/json");
+        } else {
+            res.set_content("{\"status\": \"error\"}", "application/json");
+        }
+    });
+
+    svr_->Get("/api/stat", [this](const httplib::Request& req, httplib::Response& res) {
+        std::string path = req.has_param("path") ? req.get_param_value("path") : "";
+        res.set_content(fs_.statPathJson(path), "application/json");
+    });
+
+    svr_->Post("/api/rename", [this](const httplib::Request& req, httplib::Response& res) {
+        std::string oldPath = req.has_param("old_path") ? req.get_param_value("old_path") : "";
+        std::string newName = req.has_param("new_name") ? req.get_param_value("new_name") : "";
+        if (fs_.renamePath(oldPath, newName)) {
+            res.set_content("{\"status\": \"success\"}", "application/json");
+        } else {
+            res.set_content("{\"status\": \"error\"}", "application/json");
+        }
+    });
+
+    svr_->Post("/api/copy", [this](const httplib::Request& req, httplib::Response& res) {
+        std::string source = req.has_param("source") ? req.get_param_value("source") : "";
+        std::string dest = req.has_param("dest") ? req.get_param_value("dest") : "";
+        if (fs_.copyFile(source, dest)) {
+            res.set_content("{\"status\": \"success\"}", "application/json");
+        } else {
+            res.set_content("{\"status\": \"error\"}", "application/json");
+        }
+    });
+
+    svr_->Post("/api/move", [this](const httplib::Request& req, httplib::Response& res) {
+        std::string source = req.has_param("source") ? req.get_param_value("source") : "";
+        std::string dest = req.has_param("dest") ? req.get_param_value("dest") : "";
+        if (fs_.movePath(source, dest)) {
+            res.set_content("{\"status\": \"success\"}", "application/json");
+        } else {
+            res.set_content("{\"status\": \"error\"}", "application/json");
+        }
+    });
+
+    svr_->Get("/api/diskinfo", [this](const httplib::Request& req, httplib::Response& res) {
+        res.set_content(fs_.diskInfoJson(), "application/json");
+    });
+
+    svr_->Get("/api/tree", [this](const httplib::Request& req, httplib::Response& res) {
+        std::string path = req.has_param("path") ? req.get_param_value("path") : "";
+        res.set_content(fs_.treeJson(path), "application/json");
+    });
+
+    svr_->Post("/api/format", [this](const httplib::Request& req, httplib::Response& res) {
+        if (fs_.format()) {
             res.set_content("{\"status\": \"success\"}", "application/json");
         } else {
             res.set_content("{\"status\": \"error\"}", "application/json");

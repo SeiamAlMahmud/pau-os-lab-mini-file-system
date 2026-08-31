@@ -31,6 +31,7 @@
             display: flex;
             height: 100vh;
             overflow: hidden;
+            user-select: none;
         }
 
         h1, h2, h3, .btn-new {
@@ -58,7 +59,7 @@
             gap: 12px;
             font-size: 22px;
             color: var(--text-secondary);
-            width: 238px; /* Matches sidebar width */
+            width: 238px;
         }
 
         .navbar-brand img {
@@ -126,11 +127,6 @@
             box-shadow: 0 1px 3px 0 rgba(60,64,67,0.3), 0 4px 8px 3px rgba(60,64,67,0.15);
         }
 
-        .btn-new img {
-            width: 28px;
-            height: 28px;
-        }
-
         .nav-item {
             display: flex;
             align-items: center;
@@ -141,7 +137,7 @@
             color: var(--text-primary);
             cursor: pointer;
             font-size: 14px;
-            margin-left: -16px; /* pull left to edge */
+            margin-left: -16px;
         }
 
         .nav-item.active {
@@ -222,6 +218,11 @@
             transition: background 0.2s;
         }
 
+        .file-card.selected {
+            background: #e8f0fe;
+            border-color: #1967d2;
+        }
+
         .file-card:hover {
             background: #f8f9fa;
         }
@@ -269,28 +270,26 @@
             transition: opacity 0.2s;
         }
 
-        .file-card:hover .more-actions {
+        .file-card:hover .more-actions, .file-card.selected .more-actions {
             opacity: 1;
         }
 
         .more-actions:hover {
-            background: var(--hover-color);
+            background: rgba(0,0,0,0.05);
             color: var(--text-primary);
         }
 
-        /* Context Menu (Delete etc) */
+        /* Context Menu */
         .context-menu {
-            position: absolute;
-            right: 0;
-            top: 40px;
+            position: fixed;
             background: white;
             border-radius: 4px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
             border: 1px solid var(--border-color);
             padding: 8px 0;
-            z-index: 10;
+            z-index: 1000;
             display: none;
-            width: 150px;
+            width: 180px;
         }
 
         .context-menu.active {
@@ -396,7 +395,17 @@
 
         .btn-primary:hover {
             background: var(--accent-hover);
-            box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3);
+        }
+
+        .btn-danger {
+            background: var(--danger-color);
+            color: white;
+            border: none;
+            font-weight: 500;
+            padding: 8px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Google Sans', sans-serif;
         }
 
         input[type="text"] {
@@ -407,6 +416,7 @@
             font-size: 14px;
             outline: none;
             box-sizing: border-box;
+            user-select: text;
         }
 
         input[type="text"]:focus {
@@ -426,10 +436,36 @@
             resize: none;
             outline: none;
             box-sizing: border-box;
+            user-select: text;
         }
         
         textarea:focus {
             border-color: var(--accent-color);
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 12px;
+            font-size: 14px;
+            user-select: text;
+        }
+
+        .stat-grid div:nth-child(odd) {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        pre {
+            background: #f8f9fa;
+            border: 1px solid var(--border-color);
+            padding: 16px;
+            border-radius: 8px;
+            overflow: auto;
+            flex: 1;
+            font-size: 14px;
+            margin: 0;
+            user-select: text;
         }
 
         /* Dropdown New Menu */
@@ -469,7 +505,6 @@
 
     <nav class="navbar">
         <div class="navbar-brand">
-            <!-- SVG Icon resembling Drive -->
             <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M14.5 10L6.5 24L10 30L18 16L14.5 10Z" fill="#FFC107"/>
                 <path d="M26.5 10L14.5 10L18 16L30 16L26.5 10Z" fill="#1976D2"/>
@@ -492,14 +527,13 @@
                 New
             </button>
 
-            <!-- New Dropdown -->
             <div class="new-menu" id="newMenu">
-                <div class="new-menu-item" onclick="openCreateModal('folder')">
+                <div class="new-menu-item" onclick="openInputModal('mkdir')">
                     <i class="fas fa-folder-plus" style="color: var(--text-secondary);"></i>
                     New folder
                 </div>
                 <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 8px 0;">
-                <div class="new-menu-item" onclick="openCreateModal('file')">
+                <div class="new-menu-item" onclick="openInputModal('create')">
                     <i class="fas fa-file-alt" style="color: var(--text-secondary);"></i>
                     New file
                 </div>
@@ -509,29 +543,21 @@
                 <i class="fas fa-hdd"></i>
                 <span>My Drive</span>
             </div>
-            <div class="nav-item">
-                <i class="fas fa-desktop"></i>
-                <span>Computers</span>
+            <div class="nav-item" onclick="showTree()">
+                <i class="fas fa-network-wired"></i>
+                <span>Tree View</span>
             </div>
-            <div class="nav-item">
-                <i class="fas fa-user-friends"></i>
-                <span>Shared with me</span>
+            <div class="nav-item" onclick="showDiskInfo()">
+                <i class="fas fa-database"></i>
+                <span>Storage Info</span>
             </div>
-            <div class="nav-item">
-                <i class="far fa-clock"></i>
-                <span>Recent</span>
-            </div>
-            <div class="nav-item">
-                <i class="far fa-star"></i>
-                <span>Starred</span>
-            </div>
-            <div class="nav-item">
-                <i class="far fa-trash-alt"></i>
-                <span>Trash</span>
+            <div class="nav-item" style="color: var(--danger-color);" onclick="formatDrive()">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>Format Drive</span>
             </div>
         </div>
 
-        <div class="content">
+        <div class="content" onclick="deselectAll(event)">
             <div class="breadcrumb">
                 <span id="currentPathDisplay">My Drive</span>
                 <button onclick="goUp()" title="Go Up" style="margin-left: auto;">
@@ -539,25 +565,25 @@
                 </button>
             </div>
 
-            <div class="section-title">Suggested</div>
+            <div class="section-title">Folders and Files</div>
             <div class="file-grid" id="fileGrid" style="margin-bottom: 32px;">
                 <!-- Files will be loaded here -->
             </div>
-            
         </div>
     </div>
 
-    <!-- Create Modal -->
-    <div class="modal" id="createModal">
+    <!-- Universal Input Modal -->
+    <div class="modal" id="inputModal">
         <div class="modal-content">
-            <div class="modal-title" id="createModalTitle">New folder</div>
+            <div class="modal-title" id="inputModalTitle">Input</div>
             <div class="modal-body">
-                <input type="text" id="newName" placeholder="Untitled folder">
-                <input type="hidden" id="createType">
+                <input type="text" id="inputFieldValue" placeholder="Value...">
+                <input type="hidden" id="inputActionType">
+                <input type="hidden" id="inputTargetItem">
             </div>
             <div class="modal-actions">
-                <button class="btn-text" onclick="closeModal('createModal')">Cancel</button>
-                <button class="btn-primary" onclick="createItem()">Create</button>
+                <button class="btn-text" onclick="closeModal('inputModal')">Cancel</button>
+                <button class="btn-primary" onclick="submitInput()">Submit</button>
             </div>
         </div>
     </div>
@@ -576,20 +602,50 @@
         </div>
     </div>
 
+    <!-- Info/Tree Modal -->
+    <div class="modal" id="infoModal">
+        <div class="modal-content large">
+            <div class="modal-title" id="infoModalTitle">Information</div>
+            <div class="modal-body" id="infoModalBody">
+                <!-- Data goes here -->
+            </div>
+            <div class="modal-actions">
+                <button class="btn-primary" onclick="closeModal('infoModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Context Menu -->
+    <div class="context-menu" id="globalContextMenu">
+        <div class="context-item" onclick="handleContextAction('stat')">
+            <i class="fas fa-info-circle"></i> File Info (Stat)
+        </div>
+        <div class="context-item" onclick="handleContextAction('rename')">
+            <i class="fas fa-edit"></i> Rename
+        </div>
+        <div class="context-item" onclick="handleContextAction('copy')">
+            <i class="fas fa-copy"></i> Copy To...
+        </div>
+        <div class="context-item" onclick="handleContextAction('move')">
+            <i class="fas fa-cut"></i> Move To...
+        </div>
+        <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 4px 0;">
+        <div class="context-item danger" onclick="handleContextAction('delete')">
+            <i class="fas fa-trash-alt"></i> Remove
+        </div>
+    </div>
+
     <script>
         let currentPath = "/";
         let editingFile = "";
+        let selectedItemName = "";
 
-        // Click outside to close menus
         window.onclick = function(event) {
             if (!event.target.closest('.btn-new') && !event.target.closest('.new-menu')) {
                 document.getElementById('newMenu').classList.remove('active');
             }
-            // Close context menus
-            if (!event.target.closest('.more-actions')) {
-                document.querySelectorAll('.context-menu').forEach(menu => {
-                    menu.classList.remove('active');
-                });
+            if (!event.target.closest('.more-actions') && !event.target.closest('.context-menu')) {
+                document.getElementById('globalContextMenu').classList.remove('active');
             }
         }
 
@@ -597,7 +653,11 @@
             document.getElementById('newMenu').classList.toggle('active');
         }
 
-        // Load directory contents
+        function deselectAll(e) {
+            if (e.target.closest('.file-card')) return;
+            document.querySelectorAll('.file-card').forEach(c => c.classList.remove('selected'));
+        }
+
         async function loadDirectory(path) {
             try {
                 if (!path.startsWith('/')) path = '/' + path;
@@ -612,8 +672,6 @@
                 }
 
                 currentPath = path;
-                
-                // Update breadcrumb
                 const displayPath = currentPath === '/' ? 'My Drive' : 'My Drive' + currentPath.replace(/\//g, ' > ');
                 document.getElementById('currentPathDisplay').innerText = displayPath;
                 
@@ -636,20 +694,21 @@
                             <div class="file-name" title="${item.name}">${item.name}</div>
                             <div class="file-size">${sizeText}</div>
                         </div>
-                        <button class="more-actions" onclick="toggleContextMenu('${item.name}', event)">
+                        <button class="more-actions" onclick="showContextMenu('${item.name}', event)">
                             <i class="fas fa-ellipsis-v"></i>
                         </button>
-                        <div class="context-menu" id="menu-${item.name}">
-                            <div class="context-item" onclick="deleteItem('${item.name}')">
-                                <i class="fas fa-trash-alt"></i> Remove
-                            </div>
-                        </div>
                     `;
 
-                    // Double click to open folder, single click to select (simplified to single click for ease)
+                    // Single click selects, double click opens
                     card.onclick = (e) => {
-                        if (e.target.closest('.more-actions') || e.target.closest('.context-menu')) return;
-                        
+                        if (e.target.closest('.more-actions')) return;
+                        document.querySelectorAll('.file-card').forEach(c => c.classList.remove('selected'));
+                        card.classList.add('selected');
+                        selectedItemName = item.name;
+                    };
+
+                    card.ondblclick = (e) => {
+                        if (e.target.closest('.more-actions')) return;
                         if (isDir) {
                             loadDirectory(currentPath === '/' ? `/${item.name}` : `${currentPath}/${item.name}`);
                         } else {
@@ -669,14 +728,35 @@
             }
         }
 
-        function toggleContextMenu(name, event) {
+        function showContextMenu(name, event) {
             event.stopPropagation();
-            // Close others
-            document.querySelectorAll('.context-menu').forEach(menu => {
-                if (menu.id !== `menu-${name}`) menu.classList.remove('active');
-            });
-            const menu = document.getElementById(`menu-${name}`);
-            menu.classList.toggle('active');
+            document.querySelectorAll('.file-card').forEach(c => c.classList.remove('selected'));
+            event.target.closest('.file-card').classList.add('selected');
+            selectedItemName = name;
+
+            const menu = document.getElementById('globalContextMenu');
+            menu.style.left = event.clientX + 'px';
+            menu.style.top = event.clientY + 'px';
+            menu.classList.add('active');
+        }
+
+        function handleContextAction(action) {
+            document.getElementById('globalContextMenu').classList.remove('active');
+            if (!selectedItemName) return;
+
+            const itemPath = currentPath === '/' ? `/${selectedItemName}` : `${currentPath}/${selectedItemName}`;
+
+            if (action === 'delete') {
+                deleteItem(itemPath);
+            } else if (action === 'stat') {
+                showStat(itemPath);
+            } else if (action === 'rename') {
+                openInputModal('rename', selectedItemName, itemPath);
+            } else if (action === 'copy') {
+                openInputModal('copy', currentPath + '/' + selectedItemName + '_copy', itemPath);
+            } else if (action === 'move') {
+                openInputModal('move', currentPath, itemPath);
+            }
         }
 
         function goUp() {
@@ -721,40 +801,78 @@
             }
         }
 
-        function openCreateModal(type) {
+        function openInputModal(action, defaultValue = '', targetPath = '') {
             document.getElementById('newMenu').classList.remove('active');
-            document.getElementById('createType').value = type;
-            document.getElementById('createModalTitle').innerText = type === 'folder' ? 'New folder' : 'New file';
-            document.getElementById('newName').placeholder = type === 'folder' ? 'Untitled folder' : 'Untitled file';
-            document.getElementById('newName').value = '';
-            document.getElementById('createModal').classList.add('active');
-            setTimeout(() => document.getElementById('newName').focus(), 100);
+            document.getElementById('inputActionType').value = action;
+            document.getElementById('inputTargetItem').value = targetPath;
+            
+            const titleEl = document.getElementById('inputModalTitle');
+            const inputEl = document.getElementById('inputFieldValue');
+
+            if (action === 'mkdir') {
+                titleEl.innerText = 'New folder';
+                inputEl.placeholder = 'Untitled folder';
+                inputEl.value = '';
+            } else if (action === 'create') {
+                titleEl.innerText = 'New file';
+                inputEl.placeholder = 'Untitled file';
+                inputEl.value = '';
+            } else if (action === 'rename') {
+                titleEl.innerText = 'Rename';
+                inputEl.placeholder = 'New name';
+                inputEl.value = defaultValue;
+            } else if (action === 'copy') {
+                titleEl.innerText = 'Copy To (Destination Path)';
+                inputEl.placeholder = '/path/to/destination';
+                inputEl.value = defaultValue;
+            } else if (action === 'move') {
+                titleEl.innerText = 'Move To (Destination Folder)';
+                inputEl.placeholder = '/path/to/folder';
+                inputEl.value = defaultValue;
+            }
+
+            document.getElementById('inputModal').classList.add('active');
+            setTimeout(() => inputEl.focus(), 100);
         }
 
-        async function createItem() {
-            const name = document.getElementById('newName').value.trim();
-            if (!name) return;
+        async function submitInput() {
+            const val = document.getElementById('inputFieldValue').value.trim();
+            if (!val) return;
 
-            const type = document.getElementById('createType').value;
-            const endpoint = type === 'folder' ? '/api/mkdir' : '/api/create';
-            const itemPath = currentPath === '/' ? `/${name}` : `${currentPath}/${name}`;
+            const action = document.getElementById('inputActionType').value;
+            const targetPath = document.getElementById('inputTargetItem').value;
+            
+            let url = '';
+            let method = 'POST';
+
+            if (action === 'mkdir') {
+                url = `/api/mkdir?path=${encodeURIComponent(currentPath === '/' ? `/${val}` : `${currentPath}/${val}`)}`;
+            } else if (action === 'create') {
+                url = `/api/create?path=${encodeURIComponent(currentPath === '/' ? `/${val}` : `${currentPath}/${val}`)}`;
+            } else if (action === 'rename') {
+                url = `/api/rename?old_path=${encodeURIComponent(targetPath)}&new_name=${encodeURIComponent(val)}`;
+            } else if (action === 'copy') {
+                url = `/api/copy?source=${encodeURIComponent(targetPath)}&dest=${encodeURIComponent(val)}`;
+            } else if (action === 'move') {
+                url = `/api/move?source=${encodeURIComponent(targetPath)}&dest=${encodeURIComponent(val)}`;
+            }
 
             try {
-                const response = await fetch(`${endpoint}?path=${encodeURIComponent(itemPath)}`, { method: 'POST' });
+                const response = await fetch(url, { method: method });
                 const result = await response.json();
                 if (result.status === 'success') {
-                    closeModal('createModal');
+                    closeModal('inputModal');
                     loadDirectory(currentPath);
                 } else {
-                    alert(`Failed to create ${type}.`);
+                    alert(`Failed to ${action}. Check paths and names.`);
                 }
             } catch (err) {
-                alert("Error creating item.");
+                alert(`Error executing ${action}.`);
             }
         }
 
-        async function deleteItem(name) {
-            const itemPath = currentPath === '/' ? `/${name}` : `${currentPath}/${name}`;
+        async function deleteItem(itemPath) {
+            if (!confirm(`Are you sure you want to delete '${itemPath}'?`)) return;
             try {
                 const response = await fetch(`/api/delete?path=${encodeURIComponent(itemPath)}`, { method: 'POST' });
                 const result = await response.json();
@@ -768,11 +886,71 @@
             }
         }
 
+        async function showStat(path) {
+            try {
+                const response = await fetch(`/api/stat?path=${encodeURIComponent(path)}`);
+                const data = await response.json();
+                if (data.error) { alert(data.error); return; }
+
+                let html = '<div class="stat-grid">';
+                for (const [key, value] of Object.entries(data)) {
+                    html += `<div>${key.toUpperCase().replace('_', ' ')}</div><div>${value}</div>`;
+                }
+                html += '</div>';
+
+                document.getElementById('infoModalTitle').innerText = `Details for ${data.name}`;
+                document.getElementById('infoModalBody').innerHTML = html;
+                document.getElementById('infoModal').classList.add('active');
+            } catch (err) { alert("Error fetching stats."); }
+        }
+
+        async function showDiskInfo() {
+            try {
+                const response = await fetch(`/api/diskinfo`);
+                const data = await response.json();
+                
+                let html = '<div class="stat-grid">';
+                for (const [key, value] of Object.entries(data)) {
+                    html += `<div>${key.toUpperCase().replace(/_/g, ' ')}</div><div>${value}</div>`;
+                }
+                html += '</div>';
+
+                document.getElementById('infoModalTitle').innerText = `Disk Information`;
+                document.getElementById('infoModalBody').innerHTML = html;
+                document.getElementById('infoModal').classList.add('active');
+            } catch (err) { alert("Error fetching disk info."); }
+        }
+
+        async function showTree() {
+            try {
+                const response = await fetch(`/api/tree?path=${encodeURIComponent(currentPath)}`);
+                const data = await response.json();
+                if (data.error) { alert(data.error); return; }
+
+                document.getElementById('infoModalTitle').innerText = `Tree View of ${currentPath}`;
+                document.getElementById('infoModalBody').innerHTML = `<pre>${data.tree}</pre>`;
+                document.getElementById('infoModal').classList.add('active');
+            } catch (err) { alert("Error fetching tree."); }
+        }
+
+        async function formatDrive() {
+            if (!confirm("WARNING: This will erase the entire virtual disk! Are you absolutely sure?")) return;
+            try {
+                const response = await fetch(`/api/format`, { method: 'POST' });
+                const result = await response.json();
+                if (result.status === 'success') {
+                    alert("Drive formatted successfully!");
+                    loadDirectory('/');
+                } else {
+                    alert("Failed to format drive.");
+                }
+            } catch (err) { alert("Error formatting drive."); }
+        }
+
         function closeModal(id) {
             document.getElementById(id).classList.remove('active');
         }
 
-        // Initial load
         loadDirectory('/');
     </script>
 </body>
