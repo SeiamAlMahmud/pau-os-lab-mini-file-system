@@ -1,5 +1,6 @@
 #include "Shell.h"
 
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 #include <string>
