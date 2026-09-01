@@ -66,7 +66,13 @@ void WebServer::setupRoutes() {
 
     svr_->Post("/api/delete", [this](const httplib::Request& req, httplib::Response& res) {
         std::string path = req.has_param("path") ? req.get_param_value("path") : "";
-        if (fs_.deleteFile(path) || fs_.removeDirectory(path)) {
+        bool ok = false;
+        if (fs_.fileExists(path)) {
+            ok = fs_.deleteFile(path);
+        } else {
+            ok = fs_.removeDirectory(path);
+        }
+        if (ok) {
             res.set_content("{\"status\": \"success\"}", "application/json");
         } else {
             res.set_content("{\"status\": \"error\"}", "application/json");
@@ -108,7 +114,7 @@ void WebServer::setupRoutes() {
         }
     });
 
-    svr_->Get("/api/diskinfo", [this](const httplib::Request& req, httplib::Response& res) {
+    svr_->Get("/api/diskinfo", [this](const httplib::Request& /*req*/, httplib::Response& res) {
         res.set_content(fs_.diskInfoJson(), "application/json");
     });
 
@@ -117,7 +123,7 @@ void WebServer::setupRoutes() {
         res.set_content(fs_.treeJson(path), "application/json");
     });
 
-    svr_->Post("/api/format", [this](const httplib::Request& req, httplib::Response& res) {
+    svr_->Post("/api/format", [this](const httplib::Request& /*req*/, httplib::Response& res) {
         if (fs_.format()) {
             res.set_content("{\"status\": \"success\"}", "application/json");
         } else {

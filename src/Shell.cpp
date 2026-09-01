@@ -206,10 +206,11 @@ void Shell::run() {
 
             std::cout << "\033[2J\033[H";
             std::cout << "==== NANI EDITOR: " << path << " ====\n";
-            std::cout << "Type your text below. You can use Enter for new lines.\n";
-            std::cout << "Press Ctrl+X (and then Enter) to quit and save.\n";
+            std::cout << "Type your text. Press Ctrl+X then Enter to exit.\n";
+            std::cout << "(Fallback commands on their own line: ':wq' save+exit | ':q' exit)\n";
             std::cout << "------------------------------------------------\n";
-            
+
+            // Load existing content
             std::string existingContent = fs_.getFileContent(path);
             if (!existingContent.empty()) {
                 std::cout << existingContent;
@@ -217,55 +218,73 @@ void Shell::run() {
                     std::cout << "\n";
                 }
             }
-            
+
+            // Start newContent from existing, normalise trailing newline
             std::string newContent = existingContent;
             if (!newContent.empty() && newContent.back() != '\n') {
                 newContent += "\n";
             }
+            // Edge-case: empty file → newContent starts empty (don't add extra \n)
+            if (existingContent.empty()) {
+                newContent.clear();
+            }
+
+            bool triggerSave = false; // did user ask to save (Ctrl+X / :wq)?
+            bool forceQuit  = false;  // :q — quit without save
 
             std::string line;
-            bool askSave = false;
             while (true) {
                 if (!std::getline(std::cin, line)) {
-                    break;
+                    break; // EOF / stdin closed
                 }
-                
-                // Check if the user pressed Ctrl+X (ASCII 24)
+
+                // Ctrl+X detected anywhere in the line (ASCII 0x18)
                 if (line.find('\x18') != std::string::npos) {
-                    askSave = true;
-                    // Remove Ctrl+X character from the line
-                    line.erase(std::remove_if(line.begin(), line.end(), [](char c){ return c == '\x18'; }), line.end());
+                    line.erase(std::remove_if(line.begin(), line.end(),
+                        [](char c){ return c == '\x18'; }), line.end());
                     if (!line.empty()) {
                         newContent += line + "\n";
                     }
-                    break;
-                }
-                
-                // Alternative way to exit if Ctrl+X doesn't work on their terminal
-                if (line == "^X") {
-                    askSave = true;
+                    triggerSave = true;
                     break;
                 }
 
+                // Vim-style fallback commands (on a line by themselves)
+                if (line == ":wq") { triggerSave = true;  break; }
+                if (line == ":q")  { forceQuit  = true;   break; }
+
                 newContent += line + "\n";
             }
-            
-            if (askSave) {
-                std::cout << "Save modified buffer? (y/n): ";
-                std::string ans;
-                std::getline(std::cin, ans);
-                if (ans == "y" || ans == "Y") {
-                    if (!fs_.fileExists(path)) {
-                        fs_.createFile(path);
-                    }
-                    if (!newContent.empty() && newContent.back() == '\n') {
-                        newContent.pop_back(); 
-                    }
-                    fs_.writeFile(path, newContent, false);
+
+            if (forceQuit) {
+                std::cout << "Exiting without saving.\n";
+            } else if (triggerSave) {
+                // Strip trailing newline for clean comparison & storage
+                std::string toSave = newContent;
+                if (!toSave.empty() && toSave.back() == '\n') {
+                    toSave.pop_back();
+                }
+
+                if (toSave == existingContent) {
+                    // Nothing actually changed — silent exit
+                    std::cout << "No changes. Exiting.\n";
                 } else {
-                    std::cout << "Changes discarded.\n";
+                    // Content changed — ask user
+                    std::cout << "Save modified buffer? (y/n): ";
+                    std::string ans;
+                    std::getline(std::cin, ans);
+                    if (ans == "y" || ans == "Y") {
+                        if (!fs_.fileExists(path)) {
+                            fs_.createFile(path);
+                        }
+                        fs_.writeFile(path, toSave, false);
+                        std::cout << "Saved.\n";
+                    } else {
+                        std::cout << "Changes discarded.\n";
+                    }
                 }
             } else {
+                // stdin closed without any exit command
                 std::cout << "Exiting without saving.\n";
             }
         }

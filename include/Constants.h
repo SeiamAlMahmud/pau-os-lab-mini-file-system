@@ -22,6 +22,12 @@ namespace MiniFSConfig {
 
     constexpr const char* DISK_PATH = "disk/mini_fs.disk";
     constexpr const char* MAGIC = "MINIFS1";
+
+    // Ensure metadata regions don't overflow into the data area.
+    static_assert(
+        INODE_TABLE_OFFSET + MAX_INODES * 72 <= DATA_START_BLOCK * BLOCK_SIZE,
+        "MiniFS: Metadata layout overflows into data area! Increase DATA_START_BLOCK."
+    );
 }
 
 #endif

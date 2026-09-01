@@ -616,7 +616,8 @@ bool FileSystem::removeDirectory(const std::string& path) {
     }
 
     if (currentDirectory_ == inodeNumber) {
-        currentDirectory_ = inodes_[inodeNumber].parent;
+        const int parent = inodes_[inodeNumber].parent;
+        currentDirectory_ = (parent >= 0) ? parent : superBlock_.rootInode;
     }
 
     if (!removeDirectoryUnlocked(inodeNumber)) {
@@ -1138,7 +1139,9 @@ bool FileSystem::copyFile(
 
     if (!writeFileUnlocked(newInode, content, false)) {
         inodeManager_.freeInode(newInode);
-        saveMetadata();
+        if (!saveMetadata()) {
+            std::cerr << "Warning: cleanup saveMetadata failed after copy error.\n";
+        }
         return false;
     }
 
@@ -1235,8 +1238,10 @@ void FileSystem::threadTest() {
         return;
     }
 
-    const std::string basePath =
-        pathOfUnlocked(testDirectory);
+    const std::string basePath = [&]() {
+        std::lock_guard<std::mutex> lock(fsMutex_);
+        return pathOfUnlocked(testDirectory);
+    }();
 
     std::cout << "Starting concurrent filesystem test...\n";
 

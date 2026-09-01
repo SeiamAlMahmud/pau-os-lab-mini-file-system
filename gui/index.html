@@ -499,6 +499,34 @@
         .new-menu-item:hover {
             background: #f1f3f4;
         }
+
+        /* Clickable Breadcrumb */
+        .bc-item {
+            font-size: 18px;
+            color: var(--text-secondary);
+            padding: 4px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Google Sans', sans-serif;
+            transition: background 0.15s, color 0.15s;
+            white-space: nowrap;
+        }
+        .bc-item:hover {
+            background: var(--hover-color);
+            color: var(--text-primary);
+        }
+        .bc-item.current {
+            color: var(--text-primary);
+            font-weight: 500;
+            cursor: default;
+        }
+        .bc-item.current:hover { background: none; }
+        .bc-sep {
+            color: var(--text-secondary);
+            font-size: 13px;
+            padding: 0 2px;
+            user-select: none;
+        }
     </style>
 </head>
 <body>
@@ -559,7 +587,7 @@
 
         <div class="content" onclick="deselectAll(event)">
             <div class="breadcrumb">
-                <span id="currentPathDisplay">My Drive</span>
+                <div id="currentPathDisplay" style="display:flex;align-items:center;flex-wrap:wrap;gap:0;flex:1;"></div>
                 <button onclick="goUp()" title="Go Up" style="margin-left: auto;">
                     <i class="fas fa-arrow-up"></i>
                 </button>
@@ -650,22 +678,36 @@
             }
         }
 
-        window.onkeydown = function(event) {
-            if (document.querySelector('.modal.active') || document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
+        // Unified keyboard handler — modal shortcuts + file-manager shortcuts
+        document.addEventListener('keydown', function(event) {
+            // --- Modal shortcuts ---
+            const inputModal = document.getElementById('inputModal');
+            if (inputModal.classList.contains('active')) {
+                if (event.key === 'Enter') { event.preventDefault(); submitInput(); }
+                else if (event.key === 'Escape') { closeModal('inputModal'); }
                 return;
             }
+            if (document.getElementById('editModal').classList.contains('active')) {
+                if (event.key === 'Escape') closeModal('editModal');
+                return;
+            }
+            if (document.getElementById('infoModal').classList.contains('active')) {
+                if (event.key === 'Escape') closeModal('infoModal');
+                return;
+            }
+
+            // --- File manager shortcuts (no modal open, no text field focused) ---
+            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
 
             if (event.key === 'Delete' && selectedItemName) {
                 const itemPath = currentPath === '/' ? `/${selectedItemName}` : `${currentPath}/${selectedItemName}`;
                 deleteItem(itemPath);
             }
-
             if (event.ctrlKey || event.metaKey) {
                 if (event.key === 'c' || event.key === 'C') {
                     if (selectedItemName) {
                         const itemPath = currentPath === '/' ? `/${selectedItemName}` : `${currentPath}/${selectedItemName}`;
                         clipboard = { action: 'copy', path: itemPath, name: selectedItemName };
-                        // Toast instead of alert for better UX
                         showToast(`Copied '${selectedItemName}'`);
                     }
                 } else if (event.key === 'x' || event.key === 'X') {
@@ -675,14 +717,12 @@
                         showToast(`Cut '${selectedItemName}'`);
                     }
                 } else if (event.key === 'v' || event.key === 'V') {
-                    if (clipboard) {
-                        pasteClipboard();
-                    }
+                    if (clipboard) pasteClipboard();
                 } else if (event.key === 'z' || event.key === 'Z') {
-                    showToast("Undo (Ctrl+Z) is not natively supported by MiniFS.");
+                    showToast('Undo is not supported by MiniFS.');
                 }
             }
-        }
+        });
 
         function showToast(msg) {
             let toast = document.getElementById('toast');
@@ -751,8 +791,7 @@
                 }
 
                 currentPath = path;
-                const displayPath = currentPath === '/' ? 'My Drive' : 'My Drive' + currentPath.replace(/\//g, ' > ');
-                document.getElementById('currentPathDisplay').innerText = displayPath;
+                updateBreadcrumb(currentPath);
                 
                 const grid = document.getElementById('fileGrid');
                 grid.innerHTML = '';
@@ -798,7 +837,7 @@
                     grid.appendChild(card);
                 });
 
-                if (data.length <= 2) { 
+                if (data.length === 0) {
                     grid.innerHTML = '<div style="color: var(--text-secondary); text-align: center; width: 100%; padding: 40px;">No files or folders here</div>';
                 }
 
@@ -809,14 +848,55 @@
 
         function showContextMenu(name, event) {
             event.stopPropagation();
+            const card = event.target.closest('.file-card');
+            if (!card) return; // safety: null guard
             document.querySelectorAll('.file-card').forEach(c => c.classList.remove('selected'));
-            event.target.closest('.file-card').classList.add('selected');
+            card.classList.add('selected');
             selectedItemName = name;
 
             const menu = document.getElementById('globalContextMenu');
             menu.style.left = event.clientX + 'px';
             menu.style.top = event.clientY + 'px';
             menu.classList.add('active');
+        }
+
+        // Build Google Drive-style clickable breadcrumb
+        function updateBreadcrumb(path) {
+            const container = document.getElementById('currentPathDisplay');
+            container.innerHTML = '';
+
+            const mkSpan = (text, cls, onClick) => {
+                const s = document.createElement('span');
+                s.className = cls;
+                s.textContent = text;
+                if (onClick) s.onclick = onClick;
+                return s;
+            };
+
+            const mkSep = () => {
+                const s = document.createElement('span');
+                s.className = 'bc-sep';
+                s.innerHTML = ' <i class="fas fa-chevron-right" style="font-size:11px;"></i> ';
+                return s;
+            };
+
+            if (path === '/') {
+                container.appendChild(mkSpan('My Drive', 'bc-item current', null));
+                return;
+            }
+
+            container.appendChild(mkSpan('My Drive', 'bc-item', () => loadDirectory('/')));
+
+            const parts = path.split('/').filter(p => p);
+            parts.forEach((part, i) => {
+                container.appendChild(mkSep());
+                const isLast = i === parts.length - 1;
+                const segPath = '/' + parts.slice(0, i + 1).join('/');
+                container.appendChild(
+                    mkSpan(part, 'bc-item' + (isLast ? ' current' : ''),
+                           isLast ? null : () => loadDirectory(segPath))
+                );
+            });
         }
 
         function handleContextAction(action) {
@@ -911,7 +991,10 @@
             }
 
             document.getElementById('inputModal').classList.add('active');
-            setTimeout(() => inputEl.focus(), 100);
+            setTimeout(() => {
+                inputEl.focus();
+                inputEl.select();
+            }, 100);
         }
 
         async function submitInput() {

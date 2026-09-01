@@ -44,6 +44,8 @@ bool VirtualDisk::readBytes(std::size_t offset, void* buffer, std::size_t size) 
         return false;
     }
 
+    std::lock_guard<std::mutex> lock(ioMutex_);
+
     if (::lseek(fd_, static_cast<off_t>(offset), SEEK_SET) < 0) {
         return false;
     }
@@ -66,6 +68,8 @@ bool VirtualDisk::writeBytes(std::size_t offset, const void* buffer, std::size_t
     if (fd_ < 0 || offset + size > MiniFSConfig::DISK_SIZE) {
         return false;
     }
+
+    std::lock_guard<std::mutex> lock(ioMutex_);
 
     if (::lseek(fd_, static_cast<off_t>(offset), SEEK_SET) < 0) {
         return false;

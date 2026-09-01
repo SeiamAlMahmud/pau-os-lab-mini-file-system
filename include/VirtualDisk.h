@@ -3,12 +3,14 @@
 
 #include "Constants.h"
 #include <cstddef>
+#include <mutex>
 #include <string>
 
 class VirtualDisk {
 private:
     int fd_;
     std::string path_;
+    mutable std::mutex ioMutex_;
 
 public:
     explicit VirtualDisk(const std::string& path = MiniFSConfig::DISK_PATH);
