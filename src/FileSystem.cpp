@@ -712,7 +712,7 @@ std::string FileSystem::listDirectoryJson(const std::string& path) const {
         first = false;
 
         json += "{";
-        json += "\"name\": \"" + child->name + "\",";
+        json += "\"name\": \"" + std::string(child->name) + "\",";
         json += "\"type\": \"" + std::string(child->isDirectory ? "DIR" : "FILE") + "\",";
         json += "\"size\": " + std::to_string(child->isDirectory ? directory_.childCount(childId) : static_cast<std::size_t>(child->size));
         json += "}";

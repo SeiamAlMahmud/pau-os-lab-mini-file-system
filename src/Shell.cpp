@@ -233,7 +233,7 @@ void Shell::run() {
                 if (line.find('\x18') != std::string::npos) {
                     askSave = true;
                     // Remove Ctrl+X character from the line
-                    line.erase(std::remove(line.begin(), line.end(), '\x18'), line.end());
+                    line.erase(std::remove_if(line.begin(), line.end(), [](char c){ return c == '\x18'; }), line.end());
                     if (!line.empty()) {
                         newContent += line + "\n";
                     }
